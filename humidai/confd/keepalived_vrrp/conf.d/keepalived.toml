@@ -1,0 +1,5 @@
+[template]
+src = "keepalived.conf.tmpl"
+dest = "/tmp/keepalived/keepalived.conf"
+keys = [
+]

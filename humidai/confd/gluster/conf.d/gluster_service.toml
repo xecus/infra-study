@@ -1,0 +1,6 @@
+[template]
+src = "gluster_service.py.tmpl"
+dest = "/tmp/gluster_service.py"
+keys = [
+]
+

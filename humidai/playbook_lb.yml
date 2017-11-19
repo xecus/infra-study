@@ -1,0 +1,62 @@
+
+- hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    docker_image_name: admin.taguro.internal:5000/gluster
+    docker_image_tag: latest
+    vrrp_priority:
+      lb01: 200
+      lb02: 100
+  tasks:
+
+    - name: Allow HTTP in UFW (enp0s8)
+      ufw: rule=allow to_port=80 proto=tcp interface=enp0s8 direction=in
+
+    - name: Destroy Container
+      docker_container:
+        name: dockbix-agent-xxl
+        state: absent
+
+    - name: 'Agent for Docker'
+      docker_container:
+        name: dockbix-agent-xxl
+        image: monitoringartist/dockbix-agent-xxl-limited
+        privileged: True
+        network_mode: host
+        volumes:
+          - '/:/rootfs'
+          - '/var/run:/var/run'
+        env:
+          ZA_Server: 192.168.33.10
+          ZA_ServerActive: 192.168.33.10
+        #state: absent
+
+    - name: 'Enable ip_vs'
+      modprobe:
+        name: ip_vs
+        state: present
+
+    - name: Destroy Container
+      docker_container:
+        name: gluster-lb
+        state: absent
+
+    - name: "Deploy Heartbeat {{ ansible_hostname }}"
+      docker_container:
+        name: gluster-lb
+        restart: true
+        image: "{{ docker_image_name }}:{{ docker_image_tag }}"
+        pull: true
+        network_mode: host
+        privileged: true
+        capabilities:
+          - NET_ADMIN
+          - NET_BROADCAST
+        volumes:
+          - "/lib/modules:/lib/modules:ro"
+        env:
+          VRRP_PRIORITY: "{{ vrrp_priority[ansible_hostname] }}"
+          VRRP_VIP: "192.168.33.32/24"
+        command: "/entrypoint.sh keepalived"
+        state: absent

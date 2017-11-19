@@ -1,0 +1,29 @@
+
+- hosts: all
+  gather_facts: no
+  become: true
+
+  tasks:
+
+    - name: 'Agent for Docker'
+      docker_container:
+        name: dockbix-agent-xxl
+        image: monitoringartist/dockbix-agent-xxl-limited
+        privileged: True
+        network_mode: host
+        restart_policy: unless-stopped
+        volumes:
+          - '/:/rootfs'
+          - '/var/run:/var/run'
+        env:
+          ZA_Server: 192.168.33.10
+          ZA_ServerActive: 192.168.33.10
+
+    - name: 'Deploy Nginx (Port:80)'
+      docker_container:
+        name: webserver
+        image: nginx
+        state: started
+        recreate: yes
+        ports:
+          - "80:80"

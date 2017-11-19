@@ -1,0 +1,10 @@
+[targets]
+192.168.33.10
+192.168.33.30
+192.168.33.31
+192.168.33.40
+192.168.33.41
+
+[all:vars]
+ansible_ssh_user=vagrant
+ansible_ssh_private_key_file=~/.ssh/id_rsa

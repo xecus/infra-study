@@ -1,0 +1,5 @@
+[template]
+src = "consul.json.tmpl"
+dest = "/tmp/consul.d/consul.json"
+keys = [
+]

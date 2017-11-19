@@ -1,0 +1,81 @@
+
+- hosts: all
+  gather_facts: no
+  become: true
+  vars:
+    inventory_hostname: 'admin.taguro.internal'
+    tls_dir: /etc/pki/tls/certs
+    csr_file: '{{ tls_dir }}/oreore.csr'
+    key_file: '{{ tls_dir }}/oreore.key'
+    crt_file: '{{ tls_dir }}/oreore.crt'
+    subject: '/C=JP/ST=Tokyo/L=Minato-ku/O=ABEJA Co., Ltd./OU=RetailSaaS Div/CN={{ inventory_hostname }}'
+  tasks:
+
+    - name: 'Create Document for TLS keys'
+      file: dest={{ tls_dir }} state=directory owner=vagrant group=vagrant mode=700
+
+    - name: self signed certificate
+      shell: |
+        openssl req -nodes -newkey rsa:2048 -sha256 -keyout {{ key_file }} -out {{ csr_file }} -subj "{{ subject }}"
+        openssl x509 -req -days 365 -in {{ csr_file }} -signkey {{ key_file }} -out {{ crt_file }}
+
+    - name: 'Docker Registory'
+      docker_container:
+        name: registory
+        image: 'registry:2.3.0'
+        ports:
+          - '5000:5000'
+        volumes:
+          - '{{ tls_dir }}:{{ tls_dir }}'
+          - '/var/opt:/var/lib/registry'
+        restart_policy: always
+        env:
+          REGISTRY_HTTP_ADDR: '0.0.0.0:5000'
+          REGISTRY_HTTP_TLS_CERTIFICATE: '{{ crt_file }}'
+          REGISTRY_HTTP_TLS_KEY: '{{ key_file }}'
+
+    - name: 'Data Container for DB'
+      docker_container:
+        name: dockbix-db-storage
+        image: 'busybox'
+        keep_volumes: False
+        volumes:
+          - /var/lib/mysql
+
+    - name: 'DB for Zabbix'
+      docker_container:
+        name: dockbix-db
+        image: 'monitoringartist/zabbix-db-mariadb'
+        volumes_from:
+          - dockbix-db-storage
+        volumes:
+          - '/tmp:/backups'
+          - '/etc/localtime:/etc/localtime:ro'
+        restart_policy: always
+        env:
+          MARIADB_USER: zabbix
+          MARIADB_PASS: my_password
+          TZ: Asia/Tokyo
+
+    - name: 'Zabbix Server'
+      docker_container:
+        name: dockbix
+        image: 'monitoringartist/dockbix-xxl'
+        volumes:
+          - '/etc/localtime:/etc/localtime:ro'
+        links:
+          - 'dockbix-db:dockbix.db'
+        ports:
+          - '8080:80'
+          - '162:162/udp'
+          - '10051:10051'
+        restart_policy: always
+        env:
+          PHP_date_timezone: Asia/Tokyo
+          ZS_DBHost: dockbix.db
+          ZS_DBUser: zabbix
+          ZS_DBPassword: my_password
+          XXL_zapix: true
+          XXL_grapher: true
+          TZ: Asia/Tokyo
+          ZBX_GRAPH_FONT_NAME: ipagp

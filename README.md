@@ -6,16 +6,20 @@ $ sudo dpkg -i vagrant_2.0.0_x86_64.deb
 $ vagrant plugin install vagrant-vyos
 ```
 
-# Lunch SSH-Keyagent
+# Lunch
 
 ```
 $ eval $(ssh-agent)
 $ ssh-add humidai/id_rsa
+$ cd humidai
+$ ssh-keygen -t rsa
+$ vagrant up
 ```
 
 # How to prepare nodes
 
 ```
+$ vagrant ssh humidai
 $ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory/hosts_vyos playbook_vyos.yml
 $ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory/hosts_base playbook_base.yml
 $ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory/hosts_admin playbook_admin.yml

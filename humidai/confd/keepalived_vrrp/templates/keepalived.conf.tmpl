@@ -1,0 +1,50 @@
+global_defs {
+  notification_email {
+    root@mydomain.com
+  }
+  notification_email_from svr@mydomain.com
+  smtp_server localhost
+  smtp_connect_timeout 30
+}
+
+vrrp_instance VRRP {
+   state BACKUP
+   interface enp0s8
+   virtual_router_id 51
+   priority {{ getenv "VRRP_PRIORITY" }}
+   nopreempt
+   advert_int 1
+   authentication {
+       auth_type PASS
+       auth_pass 1066
+   }
+   virtual_ipaddress {
+       {{ getenv "VRRP_VIP" }} dev enp0s8
+   }
+}
+
+virtual_server 192.168.33.32 80 {
+  delay_loop 3
+  lb_algo rr
+  lvs_method NAT
+  protocol TCP
+  real_server 192.168.33.40 80 {
+    weight 1
+    HTTP_GET {
+       url {
+           path /
+           status_code 200
+       }
+       connect_timeout 3
+    }
+  }
+  real_server 192.168.33.41 80 {
+    HTTP_GET {
+       url {
+           path /
+           status_code 200
+       }
+       connect_timeout 3
+    }
+  }
+}

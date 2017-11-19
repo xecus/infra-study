@@ -1,0 +1,26 @@
+{
+  "enable_script_checks": true,
+  "service": {
+    "address": "",
+    "checks": [
+      {
+        "interval": "10s",
+        "tcp": "localhost:24007",
+        "timeout": "5s"
+      }
+    ],
+    "enableTagOverride": false,
+    "id": "gluster",
+    "name": "gluster",
+    "port": 24007,
+    "tags": [
+      "gluster",
+      "server"
+    ]
+  },
+  "watches": [{
+      "type": "service",
+      "service": "gluster",
+      "handler": "python /tmp/gluster_service.py >> /tmp/gluster_service.log"
+  }]
+}

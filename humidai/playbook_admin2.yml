@@ -1,0 +1,34 @@
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: Add VyOS
+      local_action:
+        module: zabbix_host
+        server_url: http://192.168.33.10:8080
+        login_user: admin
+        login_password: zabbix
+        host_name: "{{ item.name }}"
+        host_groups:
+          - "Templates/Network Devices"
+        link_templates:
+          - "Template OS Linux SNMPv2"
+        status: enabled
+        state: present
+        interfaces:
+          - type: 1
+            main: 1
+            useip: 1
+            ip: 127.0.0.1
+            dns: ""
+            port: 10050
+          - type: 2
+            main: 1
+            useip: 1
+            ip: "{{ item.ip }}"
+            dns: ""
+            port: 161
+      with_items:
+        - name: "VyOS1"
+          ip: "192.168.33.21"
+        - name: "VyOS2"
+          ip: "192.168.33.21"

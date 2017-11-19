@@ -1,0 +1,132 @@
+
+- hosts: all
+  gather_facts: no
+  become: true
+  connection: local
+  vars:
+    linux_user_name: "vagrant"
+    host_vyos01:
+      host: 192.168.33.21
+      port: 22
+      username: vagrant
+      password: vagrant
+    host_vyos02:
+      host: 192.168.33.22
+      port: 22
+      username: vagrant
+      password: vagrant
+  tasks:
+    - name: configure the remote device (VyOS1)
+      vyos_config:
+        provider: "{{host_vyos01}}"
+        lines:
+          # System / Interface
+          - set system time-zone 'Asia/Tokyo'
+          - set interfaces ethernet eth0 description 'OUTSIDE'
+          - set interfaces ethernet eth1 description 'INSIDE'
+          # D-NAT & DNS
+          - set nat source rule 100 outbound-interface 'eth0'
+          - set nat source rule 100 source address '192.168.33.0/24'
+          - set nat source rule 100 translation address masquerade
+          - set service dns forwarding cache-size '0'
+          - set service dns forwarding listen-on 'eth1'
+          - set service dns forwarding name-server '8.8.8.8'
+          - set service dns forwarding name-server '8.8.4.4'
+          # Record for DNS
+          - set system static-host-mapping host-name admin.taguro.internal inet 192.168.33.10
+          - set system static-host-mapping host-name lb.taguro.internal inet 192.168.33.32
+          - set system static-host-mapping host-name lb-1.taguro.internal inet 192.168.33.30
+          - set system static-host-mapping host-name lb-2.taguro.internal inet 192.168.33.31
+          - set system static-host-mapping host-name app-1.taguro.internal inet 192.168.33.40
+          - set system static-host-mapping host-name app-2.taguro.internal inet 192.168.33.41
+          # S-NAT
+          - set nat destination rule 100 description 'HTTP(LoadBalancer)'
+          - set nat destination rule 100 destination address '192.168.34.20'
+          - set nat destination rule 100 destination port '80'
+          - set nat destination rule 100 inbound-interface 'eth2'
+          - set nat destination rule 100 protocol 'tcp'
+          - set nat destination rule 100 translation address '192.168.33.30'
+          - set nat destination rule 100 translation port '80'
+          # VRRP (Inside Network)
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 advertise-interval '1'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 description 'Inside-VRRP'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 preempt 'true'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 priority '2'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 sync-group 'inside'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 virtual-address '192.168.33.20'
+          # VRRP (Outside Network)
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 advertise-interval '1'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 description 'Outside-VRRP'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 preempt 'true'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 priority '2'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 sync-group 'outside'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 virtual-address '192.168.34.20'
+          # SNMP
+          - set service snmp community public authorization ro
+          - set service snmp listen-address 192.168.33.21 port 161
+          - set service snmp trap-target 192.168.33.10
+          # VPN
+          #- set vpn ipsec ipsec-interfaces interface 'eth0'
+          #- set vpn ipsec nat-networks allowed-network '0.0.0.0/0'
+          #- set vpn ipsec nat-traversal 'enable'
+          #- set vpn l2tp remote-access authentication local-users username taguro password 'a43440w174bM49q'
+          #- set vpn l2tp remote-access authentication mode 'local'
+          #- set vpn l2tp remote-access client-ip-pool start '192.168.33.100'
+          #- set vpn l2tp remote-access client-ip-pool stop '192.168.33.110'
+          #- set vpn l2tp remote-access ipsec-settings authentication mode 'pre-shared-secret'
+          #- set vpn l2tp remote-access ipsec-settings authentication pre-shared-secret 'Ab3ja8'
+          #- set vpn l2tp remote-access ipsec-settings ike-lifetime '3600'
+          #- set vpn l2tp remote-access outside-address '133.242.50.96'
+        save: True
+
+    - name: configure the remote device (VyOS2)
+      vyos_config:
+        provider: "{{host_vyos02}}"
+        lines:
+          # System / Interface
+          - set system time-zone 'Asia/Tokyo'
+          - set interfaces ethernet eth0 description 'OUTSIDE'
+          - set interfaces ethernet eth1 description 'INSIDE'
+          # D-NAT & DNS
+          - set nat source rule 100 outbound-interface 'eth0'
+          - set nat source rule 100 source address '192.168.33.0/24'
+          - set nat source rule 100 translation address masquerade
+          - set service dns forwarding cache-size '0'
+          - set service dns forwarding listen-on 'eth1'
+          - set service dns forwarding name-server '8.8.8.8'
+          - set service dns forwarding name-server '8.8.4.4'
+          # Record for DNS
+          - set system static-host-mapping host-name admin.taguro.internal inet 192.168.33.10
+          - set system static-host-mapping host-name lb.taguro.internal inet 192.168.33.32
+          - set system static-host-mapping host-name lb-1.taguro.internal inet 192.168.33.30
+          - set system static-host-mapping host-name lb-2.taguro.internal inet 192.168.33.31
+          - set system static-host-mapping host-name app-1.taguro.internal inet 192.168.33.40
+          - set system static-host-mapping host-name app-2.taguro.internal inet 192.168.33.41
+          # S-NAT
+          - set nat destination rule 100 description 'HTTP(LoadBalancer)'
+          - set nat destination rule 100 destination address '192.168.34.20'
+          - set nat destination rule 100 destination port '80'
+          - set nat destination rule 100 inbound-interface 'eth2'
+          - set nat destination rule 100 protocol 'tcp'
+          - set nat destination rule 100 translation address '192.168.33.30'
+          - set nat destination rule 100 translation port '80'
+          # VRRP (Inside Network)
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 advertise-interval '1'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 description 'Inside-VRRP'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 preempt 'true'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 priority '1'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 sync-group 'inside'
+          - set interfaces ethernet eth1 vrrp vrrp-group 1 virtual-address '192.168.33.20'
+          # VRRP (Outside Network)
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 advertise-interval '1'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 description 'Outside-VRRP'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 preempt 'true'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 priority '1'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 sync-group 'outside'
+          - set interfaces ethernet eth2 vrrp vrrp-group 2 virtual-address '192.168.34.20'
+          # SNMP
+          - set service snmp community public authorization ro
+          - set service snmp listen-address 192.168.33.22 port 161
+          - set service snmp trap-target 192.168.33.10
+        save: True
+

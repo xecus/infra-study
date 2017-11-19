@@ -1,0 +1,109 @@
+
+- hosts: all
+  gather_facts: no
+  become: true
+  vars:
+    linux_user_name: "vagrant"
+
+  pre_tasks:
+    - name: 'Install python2'
+      raw: apt-get -y install python-simplejson
+      register: apt_python
+      changed_when: apt_python.stdout.find('0 newly installed') == -1
+
+    - name: 'Install aptitude'
+      raw: apt-get -y install aptitude
+      register: apt_aptitude
+      changed_when: apt_aptitude.stdout.find('0 newly installed') == -1
+
+  tasks:
+
+    # Install UFW
+    - name: Reset rule of firewall
+      ufw: state=reset policy=reject
+
+    - name: Allow SSH in UFW(enp0s3)
+      ufw: rule=allow to_port=22 proto=tcp interface=enp0s3 direction=in
+
+    - name: Allow SSH in UFW(enp0s8)
+      ufw: rule=allow to_port=22 proto=tcp interface=enp0s8 direction=in
+
+    - name: Allow Zabbix in UFW(enp0s8)
+      ufw: rule=allow to_port=10050 proto=tcp interface=enp0s8 direction=in
+
+    #- name: Allow Proxy in UFW
+    #  ufw: rule=allow to_port=3128 proto=tcp interface=enp0s8 direction=in
+
+    #- name: Allow Flask in UFW
+    #  ufw: rule=allow to_port=5000 proto=tcp interface=enp0s8 direction=in
+
+    - name: Set firewall default policy
+      ufw: state=enabled policy=reject
+
+    - name: disable password authentification
+      replace: >-
+        dest='/etc/ssh/sshd_config'
+        regexp='#PasswordAuthentication yes'
+        replace='PasswordAuthentication no'
+
+    - name: reboot ssh daemon
+      service: name=sshd state=restarted
+
+    - name: Change resolve server to VyOS router
+      replace: >-
+        dest='/etc/resolv.conf'
+        regexp='nameserver 10.0.2.3'
+        replace='nameserver 192.168.33.20'
+
+    - name: 'Remove Default Gateway'
+      ignore_errors: yes
+      command: "route del default gw 10.0.2.2 enp0s3"
+
+    - name: 'Set VyOs Router as Default Gateway'
+      ignore_errors: yes
+      command: "route add default gw 192.168.33.20 enp0s8"
+
+    - name: Set DNS Resolver
+      replace: >-
+        dest='/etc/resolv.conf'
+        regexp='nameserver 10.0.2.3'
+        replace='nameserver 192.168.33.20'
+
+    - name: 'Upgrade apt packages'
+      apt:
+        update_cache: yes
+        upgrade: full
+      become: yes
+
+    - name: 'Install apt packages'
+      apt: pkg={{ item }} state=present update_cache=yes
+      with_items:
+        - vim
+        - python-pip
+        - tmux
+        - docker.io
+        - docker-compose
+        - htop
+      become: yes
+
+    - name: 'Add user to docker group'
+      command: "usermod -aG docker {{ linux_user_name }}"
+
+    - name: Run Docker with insecure-registory option
+      replace: >-
+        dest='/lib/systemd/system/docker.service'
+        regexp='/usr/bin/dockerd -H fd://'
+        replace='/usr/bin/dockerd --insecure-registry 192.168.33.10:5000 -H fd://'
+
+    - name: Run Docker with insecure-registory option
+      replace: >-
+        dest='/lib/systemd/system/docker.service'
+        regexp='/usr/bin/dockerd --insecure-registry 192.168.33.10:5000 -H fd://'
+        replace='/usr/bin/dockerd --insecure-registry admin.taguro.internal:5000 -H fd://'
+
+    - name: Restart docker
+      systemd:
+        name: docker
+        daemon_reload: yes
+        state: restarted
+

@@ -1,0 +1,6 @@
+[template]
+src = "gluster.json.tmpl"
+dest = "/tmp/consul.d/gluster.json"
+keys = [
+]
+
