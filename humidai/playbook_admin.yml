@@ -8,7 +8,7 @@
     csr_file: '{{ tls_dir }}/oreore.csr'
     key_file: '{{ tls_dir }}/oreore.key'
     crt_file: '{{ tls_dir }}/oreore.crt'
-    subject: '/C=JP/ST=Tokyo/L=Minato-ku/O=ABEJA Co., Ltd./OU=RetailSaaS Div/CN={{ inventory_hostname }}'
+    subject: '/C=JP/ST=Tokyo/L=Minato-ku/O=Taguro Co., Ltd./OU=Taguro Div/CN={{ inventory_hostname }}'
   tasks:
 
     - name: 'Create Document for TLS keys'
